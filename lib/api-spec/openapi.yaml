@@ -1,0 +1,1563 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Recruitment ATS + CRM API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+  - name: auth
+  - name: clients
+  - name: positions
+  - name: candidates
+  - name: notes
+  - name: files
+  - name: dashboard
+  - name: audit
+  - name: notifications
+  - name: reports
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ─── AUTH ────────────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [auth]
+      summary: List users
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [auth]
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [auth]
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [auth]
+      summary: Delete user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── CLIENTS ─────────────────────────────────────────────────────────────────
+  /clients:
+    get:
+      operationId: listClients
+      tags: [clients]
+      summary: List clients
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: source
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: archived
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Clients list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      tags: [clients]
+      summary: Create client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [clients]
+      summary: Get client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientDetail"
+    patch:
+      operationId: updateClient
+      tags: [clients]
+      summary: Update client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+    delete:
+      operationId: deleteClient
+      tags: [clients]
+      summary: Delete client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /clients/{id}/archive:
+    patch:
+      operationId: archiveClient
+      tags: [clients]
+      summary: Archive or unarchive client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArchiveInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  # ─── POSITIONS ────────────────────────────────────────────────────────────────
+  /positions:
+    get:
+      operationId: listPositions
+      tags: [positions]
+      summary: List positions
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: priority
+          in: query
+          schema:
+            type: string
+        - name: employmentType
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Positions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Position"
+    post:
+      operationId: createPosition
+      tags: [positions]
+      summary: Create position
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PositionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Position"
+
+  /positions/{id}:
+    get:
+      operationId: getPosition
+      tags: [positions]
+      summary: Get position
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Position with candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PositionDetail"
+    patch:
+      operationId: updatePosition
+      tags: [positions]
+      summary: Update position
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PositionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Position"
+    delete:
+      operationId: deletePosition
+      tags: [positions]
+      summary: Delete position
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── CANDIDATES ───────────────────────────────────────────────────────────────
+  /candidates:
+    get:
+      operationId: listCandidates
+      tags: [candidates]
+      summary: List candidates
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: positionId
+          in: query
+          schema:
+            type: integer
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+        - name: source
+          in: query
+          schema:
+            type: string
+        - name: recruiterId
+          in: query
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Candidates list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Candidate"
+    post:
+      operationId: createCandidate
+      tags: [candidates]
+      summary: Submit candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateInput"
+      responses:
+        "201":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Candidate"
+
+  /candidates/{id}:
+    get:
+      operationId: getCandidate
+      tags: [candidates]
+      summary: Get candidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Candidate detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateDetail"
+    patch:
+      operationId: updateCandidate
+      tags: [candidates]
+      summary: Update candidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Candidate"
+    delete:
+      operationId: deleteCandidate
+      tags: [candidates]
+      summary: Delete candidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── NOTES ────────────────────────────────────────────────────────────────────
+  /notes:
+    get:
+      operationId: listNotes
+      tags: [notes]
+      summary: List notes by entity
+      parameters:
+        - name: entityType
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: entityId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notes list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Note"
+    post:
+      operationId: createNote
+      tags: [notes]
+      summary: Add note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /notes/{id}:
+    delete:
+      operationId: deleteNote
+      tags: [notes]
+      summary: Delete note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── FILES ────────────────────────────────────────────────────────────────────
+  /files:
+    get:
+      operationId: listFiles
+      tags: [files]
+      summary: List files by entity
+      parameters:
+        - name: entityType
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: entityId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Files list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileRecord"
+    post:
+      operationId: uploadFile
+      tags: [files]
+      summary: Upload file (base64)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FileInput"
+      responses:
+        "201":
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileRecord"
+
+  /files/{id}:
+    delete:
+      operationId: deleteFile
+      tags: [files]
+      summary: Delete file
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── DASHBOARD ────────────────────────────────────────────────────────────────
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/monthly:
+    get:
+      operationId: getMonthlyTrends
+      tags: [dashboard]
+      summary: Get monthly trend data
+      parameters:
+        - name: months
+          in: query
+          schema:
+            type: integer
+            default: 6
+      responses:
+        "200":
+          description: Monthly trends
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonthlyTrend"
+
+  /dashboard/pipeline:
+    get:
+      operationId: getCandidatePipeline
+      tags: [dashboard]
+      summary: Candidate pipeline by status
+      responses:
+        "200":
+          description: Pipeline breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PipelineStage"
+
+  # ─── AUDIT ────────────────────────────────────────────────────────────────────
+  /audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags: [audit]
+      summary: List audit logs
+      parameters:
+        - name: entityType
+          in: query
+          schema:
+            type: string
+        - name: entityId
+          in: query
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+
+  # ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: Get current user notifications
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: Updated
+
+  # ─── REPORTS ─────────────────────────────────────────────────────────────────
+  /reports/clients:
+    get:
+      operationId: getClientReport
+      tags: [reports]
+      summary: Client report data
+      responses:
+        "200":
+          description: Client report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClientReportRow"
+
+  /reports/positions:
+    get:
+      operationId: getPositionReport
+      tags: [reports]
+      summary: Position report data
+      responses:
+        "200":
+          description: Position report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PositionReportRow"
+
+  /reports/candidates:
+    get:
+      operationId: getCandidateReport
+      tags: [reports]
+      summary: Candidate report data
+      responses:
+        "200":
+          description: Candidate report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CandidateReportRow"
+
+  /reports/placements:
+    get:
+      operationId: getPlacementReport
+      tags: [reports]
+      summary: Placement report data
+      responses:
+        "200":
+          description: Placement report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlacementReportRow"
+
+  /reports/recruiter-performance:
+    get:
+      operationId: getRecruiterPerformanceReport
+      tags: [reports]
+      summary: Recruiter performance report
+      responses:
+        "200":
+          description: Recruiter performance
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecruiterPerformanceRow"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    # ─── AUTH ──────────────────────────────────────────────────────────────────
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      required: [id, name, email, role, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        createdAt:
+          type: string
+
+    UserInput:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        password:
+          type: string
+
+    # ─── CLIENT ────────────────────────────────────────────────────────────────
+    Client:
+      type: object
+      required: [id, clientName, pocName, email, phone, status, source, createdAt, archived]
+      properties:
+        id:
+          type: integer
+        clientName:
+          type: string
+        pocName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: ["string", "null"]
+        source:
+          type: string
+        status:
+          type: string
+        notes:
+          type: ["string", "null"]
+        archived:
+          type: boolean
+        createdAt:
+          type: string
+        createdById:
+          type: ["integer", "null"]
+        positionCount:
+          type: ["integer", "null"]
+
+    ClientDetail:
+      type: object
+      required: [id, clientName, pocName, email, phone, status, source, createdAt, archived, positions]
+      properties:
+        id:
+          type: integer
+        clientName:
+          type: string
+        pocName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: ["string", "null"]
+        source:
+          type: string
+        status:
+          type: string
+        notes:
+          type: ["string", "null"]
+        archived:
+          type: boolean
+        createdAt:
+          type: string
+        createdById:
+          type: ["integer", "null"]
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Position"
+
+    ClientInput:
+      type: object
+      required: [clientName, pocName, email, phone]
+      properties:
+        clientName:
+          type: string
+        pocName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        source:
+          type: string
+        status:
+          type: string
+        notes:
+          type: string
+
+    ClientUpdate:
+      type: object
+      properties:
+        clientName:
+          type: string
+        pocName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        source:
+          type: string
+        status:
+          type: string
+        notes:
+          type: string
+
+    ArchiveInput:
+      type: object
+      required: [archived]
+      properties:
+        archived:
+          type: boolean
+
+    # ─── POSITION ──────────────────────────────────────────────────────────────
+    Position:
+      type: object
+      required: [id, clientId, clientName, positionName, location, employmentType, priority, openings, status, createdAt]
+      properties:
+        id:
+          type: integer
+        clientId:
+          type: integer
+        clientName:
+          type: string
+        positionName:
+          type: string
+        jobDescription:
+          type: ["string", "null"]
+        jobDescriptionLink:
+          type: ["string", "null"]
+        location:
+          type: string
+        employmentType:
+          type: string
+        priority:
+          type: string
+        openings:
+          type: integer
+        hiringManager:
+          type: ["string", "null"]
+        status:
+          type: string
+        createdAt:
+          type: string
+        candidateCount:
+          type: ["integer", "null"]
+
+    PositionDetail:
+      type: object
+      required: [id, clientId, clientName, positionName, location, employmentType, priority, openings, status, createdAt, candidates]
+      properties:
+        id:
+          type: integer
+        clientId:
+          type: integer
+        clientName:
+          type: string
+        positionName:
+          type: string
+        jobDescription:
+          type: ["string", "null"]
+        jobDescriptionLink:
+          type: ["string", "null"]
+        location:
+          type: string
+        employmentType:
+          type: string
+        priority:
+          type: string
+        openings:
+          type: integer
+        hiringManager:
+          type: ["string", "null"]
+        status:
+          type: string
+        createdAt:
+          type: string
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/Candidate"
+
+    PositionInput:
+      type: object
+      required: [clientId, positionName, location, employmentType, priority, openings]
+      properties:
+        clientId:
+          type: integer
+        positionName:
+          type: string
+        jobDescription:
+          type: string
+        jobDescriptionLink:
+          type: string
+        location:
+          type: string
+        employmentType:
+          type: string
+        priority:
+          type: string
+        openings:
+          type: integer
+        hiringManager:
+          type: string
+
+    PositionUpdate:
+      type: object
+      properties:
+        positionName:
+          type: string
+        jobDescription:
+          type: string
+        jobDescriptionLink:
+          type: string
+        location:
+          type: string
+        employmentType:
+          type: string
+        priority:
+          type: string
+        openings:
+          type: integer
+        hiringManager:
+          type: string
+        status:
+          type: string
+
+    # ─── CANDIDATE ─────────────────────────────────────────────────────────────
+    Candidate:
+      type: object
+      required: [id, positionId, positionName, clientId, clientName, candidateName, email, phone, status, source, submissionDate, createdAt]
+      properties:
+        id:
+          type: integer
+        positionId:
+          type: integer
+        positionName:
+          type: string
+        clientId:
+          type: integer
+        clientName:
+          type: string
+        candidateName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        currentCompany:
+          type: ["string", "null"]
+        experience:
+          type: ["string", "null"]
+        currentCtc:
+          type: ["string", "null"]
+        expectedCtc:
+          type: ["string", "null"]
+        noticePeriod:
+          type: ["string", "null"]
+        source:
+          type: string
+        status:
+          type: string
+        submissionDate:
+          type: string
+        createdAt:
+          type: string
+        recruiterId:
+          type: ["integer", "null"]
+        recruiterName:
+          type: ["string", "null"]
+        resumeFileName:
+          type: ["string", "null"]
+
+    CandidateDetail:
+      type: object
+      required: [id, positionId, positionName, clientId, clientName, candidateName, email, phone, status, source, submissionDate, createdAt]
+      properties:
+        id:
+          type: integer
+        positionId:
+          type: integer
+        positionName:
+          type: string
+        clientId:
+          type: integer
+        clientName:
+          type: string
+        candidateName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        currentCompany:
+          type: ["string", "null"]
+        experience:
+          type: ["string", "null"]
+        currentCtc:
+          type: ["string", "null"]
+        expectedCtc:
+          type: ["string", "null"]
+        noticePeriod:
+          type: ["string", "null"]
+        source:
+          type: string
+        status:
+          type: string
+        submissionDate:
+          type: string
+        createdAt:
+          type: string
+        recruiterId:
+          type: ["integer", "null"]
+        recruiterName:
+          type: ["string", "null"]
+        resumeFileName:
+          type: ["string", "null"]
+
+    CandidateInput:
+      type: object
+      required: [positionId, candidateName, email, phone, source]
+      properties:
+        positionId:
+          type: integer
+        candidateName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        currentCompany:
+          type: string
+        experience:
+          type: string
+        currentCtc:
+          type: string
+        expectedCtc:
+          type: string
+        noticePeriod:
+          type: string
+        source:
+          type: string
+        submissionDate:
+          type: string
+        resumeFileName:
+          type: string
+        resumeData:
+          type: string
+
+    CandidateUpdate:
+      type: object
+      properties:
+        candidateName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        currentCompany:
+          type: string
+        experience:
+          type: string
+        currentCtc:
+          type: string
+        expectedCtc:
+          type: string
+        noticePeriod:
+          type: string
+        source:
+          type: string
+        status:
+          type: string
+        resumeFileName:
+          type: string
+        resumeData:
+          type: string
+
+    # ─── NOTES ─────────────────────────────────────────────────────────────────
+    Note:
+      type: object
+      required: [id, entityType, entityId, comment, createdAt]
+      properties:
+        id:
+          type: integer
+        entityType:
+          type: string
+        entityId:
+          type: integer
+        comment:
+          type: string
+        createdAt:
+          type: string
+        userId:
+          type: ["integer", "null"]
+        userName:
+          type: ["string", "null"]
+
+    NoteInput:
+      type: object
+      required: [entityType, entityId, comment]
+      properties:
+        entityType:
+          type: string
+        entityId:
+          type: integer
+        comment:
+          type: string
+
+    # ─── FILES ─────────────────────────────────────────────────────────────────
+    FileRecord:
+      type: object
+      required: [id, entityType, entityId, fileName, fileType, createdAt]
+      properties:
+        id:
+          type: integer
+        entityType:
+          type: string
+        entityId:
+          type: integer
+        fileName:
+          type: string
+        fileType:
+          type: string
+        fileSize:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        userId:
+          type: ["integer", "null"]
+        userName:
+          type: ["string", "null"]
+
+    FileInput:
+      type: object
+      required: [entityType, entityId, fileName, fileType, fileData]
+      properties:
+        entityType:
+          type: string
+        entityId:
+          type: integer
+        fileName:
+          type: string
+        fileType:
+          type: string
+        fileSize:
+          type: integer
+        fileData:
+          type: string
+
+    # ─── DASHBOARD ─────────────────────────────────────────────────────────────
+    DashboardStats:
+      type: object
+      required: [totalClients, potentialClients, activeClients, openPositions, closedPositions, candidatesSubmitted, interviewScheduled, placements, offerPending]
+      properties:
+        totalClients:
+          type: integer
+        potentialClients:
+          type: integer
+        activeClients:
+          type: integer
+        openPositions:
+          type: integer
+        closedPositions:
+          type: integer
+        candidatesSubmitted:
+          type: integer
+        interviewScheduled:
+          type: integer
+        placements:
+          type: integer
+        offerPending:
+          type: integer
+
+    MonthlyTrend:
+      type: object
+      required: [month, clients, positions, submissions, placements]
+      properties:
+        month:
+          type: string
+        clients:
+          type: integer
+        positions:
+          type: integer
+        submissions:
+          type: integer
+        placements:
+          type: integer
+
+    PipelineStage:
+      type: object
+      required: [status, count]
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+
+    # ─── AUDIT ─────────────────────────────────────────────────────────────────
+    AuditLog:
+      type: object
+      required: [id, entityType, entityId, action, createdAt]
+      properties:
+        id:
+          type: integer
+        entityType:
+          type: string
+        entityId:
+          type: integer
+        action:
+          type: string
+        changes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        userId:
+          type: ["integer", "null"]
+        userName:
+          type: ["string", "null"]
+
+    # ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
+    Notification:
+      type: object
+      required: [id, message, type, read, createdAt]
+      properties:
+        id:
+          type: integer
+        message:
+          type: string
+        type:
+          type: string
+        read:
+          type: boolean
+        entityType:
+          type: ["string", "null"]
+        entityId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    # ─── REPORTS ───────────────────────────────────────────────────────────────
+    ClientReportRow:
+      type: object
+      required: [id, clientName, status, source, positionCount, candidateCount, placementCount, createdAt]
+      properties:
+        id:
+          type: integer
+        clientName:
+          type: string
+        status:
+          type: string
+        source:
+          type: string
+        positionCount:
+          type: integer
+        candidateCount:
+          type: integer
+        placementCount:
+          type: integer
+        createdAt:
+          type: string
+
+    PositionReportRow:
+      type: object
+      required: [id, positionName, clientName, status, priority, openings, candidateCount, placementCount, createdAt]
+      properties:
+        id:
+          type: integer
+        positionName:
+          type: string
+        clientName:
+          type: string
+        status:
+          type: string
+        priority:
+          type: string
+        openings:
+          type: integer
+        candidateCount:
+          type: integer
+        placementCount:
+          type: integer
+        createdAt:
+          type: string
+
+    CandidateReportRow:
+      type: object
+      required: [id, candidateName, positionName, clientName, status, source, submissionDate]
+      properties:
+        id:
+          type: integer
+        candidateName:
+          type: string
+        positionName:
+          type: string
+        clientName:
+          type: string
+        status:
+          type: string
+        source:
+          type: string
+        experience:
+          type: ["string", "null"]
+        currentCtc:
+          type: ["string", "null"]
+        expectedCtc:
+          type: ["string", "null"]
+        noticePeriod:
+          type: ["string", "null"]
+        submissionDate:
+          type: string
+
+    PlacementReportRow:
+      type: object
+      required: [id, candidateName, positionName, clientName, placedDate, experience]
+      properties:
+        id:
+          type: integer
+        candidateName:
+          type: string
+        positionName:
+          type: string
+        clientName:
+          type: string
+        placedDate:
+          type: string
+        experience:
+          type: ["string", "null"]
+        currentCtc:
+          type: ["string", "null"]
+        expectedCtc:
+          type: ["string", "null"]
+        recruiterName:
+          type: ["string", "null"]
+
+    RecruiterPerformanceRow:
+      type: object
+      required: [recruiterId, recruiterName, submissionsCount, placementsCount, interviewsCount, activePositionsCount]
+      properties:
+        recruiterId:
+          type: integer
+        recruiterName:
+          type: string
+        submissionsCount:
+          type: integer
+        placementsCount:
+          type: integer
+        interviewsCount:
+          type: integer
+        activePositionsCount:
+          type: integer

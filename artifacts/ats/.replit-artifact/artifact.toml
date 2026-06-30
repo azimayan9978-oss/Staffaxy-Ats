@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Recruitment ATS"
+version = "1.0.0"
+id = "artifacts/ats"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26094
+
+[services.development]
+run = "pnpm --filter @workspace/ats run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ats", "run", "build" ]
+publicDir = "artifacts/ats/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26094"
+BASE_PATH = "/"
