@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useListClients,
   useDeleteClient,
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Building2, MoreHorizontal, Eye, Edit, Archive, Trash2 } from "lucide-react";
+import { Search, Plus, Upload, Building2, MoreHorizontal, Eye, Edit, Archive, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,9 +34,13 @@ export function ClientsPage() {
   const [search, setSearch] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { data: clients, isLoading } = useListClients({ search });
+  const queryClient = useQueryClient();
+  const clientsQuery = useListClients({ search });
+  const { data: clients, isLoading } = clientsQuery;
   const deleteClient = useDeleteClient();
   const archiveClient = useArchiveClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
 
   const handleDelete = (id: number, name: string) => {
     if (!confirm(`Delete "${name}" and all its positions and candidates? This cannot be undone.`)) return;
@@ -45,6 +50,51 @@ export function ClientsPage() {
     });
   };
 
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow selecting the same file again later
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+        reader.onerror = () => reject(new Error("Couldn't read the file"));
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch("/api/clients/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ fileData: base64, fileName: file.name }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || `Import failed (${res.status})`);
+      }
+
+      const summary = await res.json();
+      toast({
+        title: "Import complete",
+        description: `${summary.clientsCreated} new clients, ${summary.clientsMatched} matched to existing clients, ${summary.positionsCreated} positions added.`,
+      });
+      queryClient.invalidateQueries({ queryKey: clientsQuery.queryKey });
+    } catch (err) {
+      toast({
+        title: "Import failed",
+        description: err instanceof Error ? err.message : "Something went wrong reading that file.",
+        variant: "destructive",
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -52,9 +102,22 @@ export function ClientsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Clients</h1>
           <p className="text-muted-foreground">Manage your client relationships and accounts.</p>
         </div>
-        <Link href="/clients/new">
-          <Button><Plus className="w-4 h-4 mr-2" />Add Client</Button>
-        </Link>
+        <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          <Button variant="outline" onClick={handleImportClick} disabled={importing}>
+            <Upload className="w-4 h-4 mr-2" />
+            {importing ? "Importing..." : "Import from Excel"}
+          </Button>
+          <Link href="/clients/new">
+            <Button><Plus className="w-4 h-4 mr-2" />Add Client</Button>
+          </Link>
+        </div>
       </div>
 
       <Card>
