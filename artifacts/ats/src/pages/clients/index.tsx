@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Upload, Building2, MoreHorizontal, Eye, Edit, Archive, Trash2 } from "lucide-react";
+import { Search, Plus, Upload, Building2, MoreHorizontal, Eye, Edit, Archive, Trash2, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,8 +20,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryParams } from "@/hooks/use-query-params";
 
 const statusColors: Record<string, string> = {
   "Signed Agreement": "bg-green-500/10 text-green-700 border-green-500/20",
@@ -30,12 +32,23 @@ const statusColors: Record<string, string> = {
   "Inactive": "bg-gray-500/10 text-gray-700 border-gray-500/20",
 };
 
+const CLIENT_STATUSES = ["Signed Agreement", "Potential Client", "Will Work in Future", "Inactive"];
+
 export function ClientsPage() {
+  const queryParams = useQueryParams();
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState(queryParams.get("status") ?? "");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const clientsQuery = useListClients({ search });
+
+  // Keep the filter in sync if the URL changes (e.g. clicking a dashboard card
+  // while already on this page, or using browser back/forward).
+  useEffect(() => {
+    setStatus(queryParams.get("status") ?? "");
+  }, [queryParams]);
+
+  const clientsQuery = useListClients({ search: search || undefined, status: status || undefined });
   const { data: clients, isLoading } = clientsQuery;
   const deleteClient = useDeleteClient();
   const archiveClient = useArchiveClient();
@@ -122,14 +135,42 @@ export function ClientsPage() {
 
       <Card>
         <CardHeader className="py-4">
-          <div className="relative w-72">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search clients..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative w-72">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search clients..."
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Select
+              value={status || "all"}
+              onValueChange={(v) => {
+                const next = v === "all" ? "" : v;
+                setStatus(next);
+                setLocation(next ? `/clients?status=${encodeURIComponent(next)}` : "/clients");
+              }}
+            >
+              <SelectTrigger className="w-48"><SelectValue placeholder="All statuses" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                {CLIENT_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {status && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => { setStatus(""); setLocation("/clients"); }}
+              >
+                <X className="w-3 h-3 mr-1" />Clear filter
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
