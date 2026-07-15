@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useListCandidates, useDeleteCandidate } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Users, MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Users, MoreHorizontal, Eye, Edit, Trash2, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryParams } from "@/hooks/use-query-params";
 
 const statusColors: Record<string, string> = {
   "Submitted": "bg-blue-500/10 text-blue-700 border-blue-500/20",
@@ -30,10 +31,17 @@ const statusColors: Record<string, string> = {
 };
 
 export function CandidatesPage() {
+  const queryParams = useQueryParams();
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState(queryParams.get("status") ?? "");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { data: candidates, isLoading } = useListCandidates({ search });
+
+  useEffect(() => {
+    setStatus(queryParams.get("status") ?? "");
+  }, [queryParams]);
+
+  const { data: candidates, isLoading } = useListCandidates({ search: search || undefined, status: status || undefined });
   const deleteCandidate = useDeleteCandidate();
 
   const handleDelete = (id: number, name: string) => {
@@ -58,14 +66,29 @@ export function CandidatesPage() {
 
       <Card>
         <CardHeader className="py-4">
-          <div className="relative w-72">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search candidates..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative w-72">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search candidates..."
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            {status && (
+              <Badge variant="outline" className="gap-1 py-1.5 pl-3 pr-1.5">
+                Status: {status}
+                <button
+                  type="button"
+                  className="ml-1 rounded-full hover:bg-muted p-0.5"
+                  onClick={() => { setStatus(""); setLocation("/candidates"); }}
+                  aria-label="Clear status filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
           </div>
         </CardHeader>
         <CardContent>

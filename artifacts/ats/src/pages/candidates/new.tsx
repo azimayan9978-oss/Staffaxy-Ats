@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useCreateCandidate, useListPositions } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Paperclip, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Paperclip, X, Briefcase } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryParams } from "@/hooks/use-query-params";
 
 export function NewCandidatePage() {
   const [, setLocation] = useLocation();
@@ -15,9 +17,14 @@ export function NewCandidatePage() {
   const createCandidate = useCreateCandidate();
   const { data: positions } = useListPositions({});
   const fileRef = useRef<HTMLInputElement>(null);
+  const queryParams = useQueryParams();
+
+  // Arriving from a position's "Submit Candidate" button carries the
+  // position along, so the recruiter doesn't have to re-find it here.
+  const lockedPositionId = queryParams.get("positionId") ?? "";
 
   const [form, setForm] = useState({
-    positionId: "",
+    positionId: lockedPositionId,
     candidateName: "",
     email: "",
     phone: "",
@@ -30,6 +37,23 @@ export function NewCandidatePage() {
     resumeFileName: "",
     resumeData: "",
   });
+
+  // If the position list loads after the query param is read, or the param
+  // changes, keep the preselection in sync.
+  useEffect(() => {
+    if (lockedPositionId) {
+      setForm((f) => (f.positionId ? f : { ...f, positionId: lockedPositionId }));
+    }
+  }, [lockedPositionId]);
+
+  const lockedPosition = lockedPositionId
+    ? positions?.find((p) => String(p.id) === lockedPositionId)
+    : undefined;
+
+  // Lets the recruiter override the pre-selected position if they landed
+  // here for the wrong one, without losing the "no re-search" convenience
+  // for the common case.
+  const [showPositionPicker, setShowPositionPicker] = useState(false);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -93,7 +117,11 @@ export function NewCandidatePage() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Submit Candidate</h1>
-          <p className="text-muted-foreground">Add a new candidate to a position.</p>
+          <p className="text-muted-foreground">
+            {lockedPosition
+              ? `Adding a candidate to ${lockedPosition.positionName} at ${lockedPosition.clientName}.`
+              : "Add a new candidate to a position."}
+          </p>
         </div>
       </div>
 
@@ -104,16 +132,36 @@ export function NewCandidatePage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-2">
                 <Label>Position *</Label>
-                <Select value={form.positionId} onValueChange={(v) => setForm((f) => ({ ...f, positionId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select a position" /></SelectTrigger>
-                  <SelectContent>
-                    {positions?.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.positionName} — {p.clientName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {lockedPositionId && !showPositionPicker ? (
+                  <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Briefcase className="w-4 h-4 text-primary shrink-0" />
+                      <span className="text-sm font-medium truncate">
+                        {lockedPosition ? `${lockedPosition.positionName} — ${lockedPosition.clientName}` : "Loading position…"}
+                      </span>
+                      <Badge variant="outline" className="text-xs shrink-0">Pre-selected</Badge>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPositionPicker(true)}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <Select value={form.positionId} onValueChange={(v) => setForm((f) => ({ ...f, positionId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select a position" /></SelectTrigger>
+                    <SelectContent>
+                      {positions?.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.positionName} — {p.clientName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="space-y-2">
