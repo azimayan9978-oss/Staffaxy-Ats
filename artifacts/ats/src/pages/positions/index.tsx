@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useListPositions, useDeletePosition } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus, Briefcase, MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryParams } from "@/hooks/use-query-params";
 
 const statusColors: Record<string, string> = {
   "Open": "bg-blue-500/10 text-blue-700 border-blue-500/20",
@@ -31,11 +33,44 @@ const priorityColors: Record<string, string> = {
   "Low": "bg-blue-500/10 text-blue-700 border-blue-500/20",
 };
 
+// Statuses that count as "closed" for the Positions summary tab.
+// (mirrors the same grouping used by the dashboard stats endpoint)
+const CLOSED_STATUSES = new Set(["Filled", "Cancelled", "Closed"]);
+
+type StatusTab = "all" | "active" | "closed";
+
 export function PositionsPage() {
+  const queryParams = useQueryParams();
   const [search, setSearch] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { data: positions, isLoading } = useListPositions({ search });
+
+  // "active" / "closed" are handled client-side (closed spans 3 raw
+  // statuses); any other exact status value (e.g. "Open") is sent straight
+  // to the API as a precise filter.
+  const urlStatus = queryParams.get("status") ?? "";
+  const initialTab: StatusTab = urlStatus === "closed" ? "closed" : urlStatus === "Open" ? "active" : "all";
+  const [tab, setTab] = useState<StatusTab>(initialTab);
+
+  useEffect(() => {
+    setTab(urlStatus === "closed" ? "closed" : urlStatus === "Open" ? "active" : "all");
+  }, [urlStatus]);
+
+  const apiStatusFilter = tab === "active" ? "Open" : undefined;
+  const { data: rawPositions, isLoading } = useListPositions({ search: search || undefined, status: apiStatusFilter });
+
+  const positions = useMemo(() => {
+    if (!rawPositions) return rawPositions;
+    if (tab === "closed") return rawPositions.filter((p) => CLOSED_STATUSES.has(p.status));
+    return rawPositions;
+  }, [rawPositions, tab]);
+
+  const handleTabChange = (v: string) => {
+    const next = v as StatusTab;
+    setTab(next);
+    setLocation(next === "all" ? "/positions" : `/positions?status=${next === "active" ? "Open" : "closed"}`);
+  };
+
   const deletePosition = useDeletePosition();
 
   const handleDelete = (id: number, name: string) => {
@@ -60,14 +95,23 @@ export function PositionsPage() {
 
       <Card>
         <CardHeader className="py-4">
-          <div className="relative w-72">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search positions..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative w-72">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search positions..."
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Tabs value={tab} onValueChange={handleTabChange}>
+              <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="active">Active</TabsTrigger>
+                <TabsTrigger value="closed">Closed</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </CardHeader>
         <CardContent>

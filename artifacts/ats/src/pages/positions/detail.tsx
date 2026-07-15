@@ -265,7 +265,7 @@ export function PositionDetailPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between py-3">
                   <CardTitle className="text-base">Candidates</CardTitle>
-                  <Link href="/candidates/new">
+                  <Link href={`/candidates/new?positionId=${id}`}>
                     <Button size="sm"><Plus className="w-3 h-3 mr-1" />Submit Candidate</Button>
                   </Link>
                 </CardHeader>
